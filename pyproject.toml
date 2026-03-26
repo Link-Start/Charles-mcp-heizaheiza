@@ -8,9 +8,7 @@ version = "2.0.0"
 description = "Charles Proxy MCP server with live capture, structured traffic analysis, and agent-friendly tool contracts"
 readme = {file = "README.en.md", content-type = "text/markdown"}
 license = "MIT"
-authors = [
-    {name = "7owe2"}
-]
+authors = [{name = "heizaheiza"}]
 requires-python = ">=3.10"
 keywords = ["mcp", "charles", "proxy", "traffic-analysis", "network-debugging", "agent-tools"]
 classifiers = [
@@ -45,9 +43,9 @@ dev = [
 charles-mcp = "charles_mcp.main:main"
 
 [project.urls]
-Homepage = "https://github.com/7owe2/Charles-mcp"
+Homepage = "https://github.com/heizaheiza/Charles-mcp"
 Documentation = "https://github.com/7owe2/Charles-mcp/blob/main/README.en.md"
-Repository = "https://github.com/7owe2/Charles-mcp"
+Repository = "https://github.com/heizaheiza/Charles-mcp"
 Issues = "https://github.com/7owe2/Charles-mcp/issues"
 
 [tool.setuptools.packages.find]
