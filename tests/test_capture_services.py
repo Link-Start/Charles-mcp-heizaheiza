@@ -1,4 +1,6 @@
+import json
 from copy import deepcopy
+from pathlib import Path
 
 import pytest
 
@@ -106,3 +108,35 @@ async def test_recording_history_service_reads_saved_snapshot_only() -> None:
     assert result.source == "history"
     assert result.total_items == 1
     assert [item["path"] for item in result.items] == ["/history"]
+
+
+@pytest.mark.asyncio
+async def test_recording_history_service_rejects_paths_outside_package_dir(
+    tmp_path: Path,
+) -> None:
+    config = Config(base_dir=str(tmp_path))
+    package_dir = tmp_path / "package"
+    package_dir.mkdir(parents=True, exist_ok=True)
+    outside_path = tmp_path / "outside.chlsj"
+    outside_path.write_text(json.dumps([_entry(path="/outside")]), encoding="utf-8")
+
+    service = RecordingHistoryService(config=config)
+
+    with pytest.raises(ValueError, match="inside"):
+        await service.get_snapshot(str(outside_path))
+
+
+@pytest.mark.asyncio
+async def test_recording_history_service_rejects_non_chlsj_snapshot_paths(
+    tmp_path: Path,
+) -> None:
+    config = Config(base_dir=str(tmp_path))
+    package_dir = tmp_path / "package"
+    package_dir.mkdir(parents=True, exist_ok=True)
+    invalid_path = package_dir / "outside.json"
+    invalid_path.write_text(json.dumps([_entry(path="/json")]), encoding="utf-8")
+
+    service = RecordingHistoryService(config=config)
+
+    with pytest.raises(ValueError, match="\\.chlsj"):
+        await service.get_snapshot(str(invalid_path))

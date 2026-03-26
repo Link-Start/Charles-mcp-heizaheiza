@@ -6,6 +6,7 @@ import json
 import os
 import re
 from copy import deepcopy
+from pathlib import Path
 from typing import Optional
 
 from charles_mcp.client import CharlesClient
@@ -36,6 +37,30 @@ class RecordingHistoryService:
             return None
         latest = sorted(files)[-1]
         return os.path.join(self.config.package_dir, latest)
+
+    def _resolve_recording_path(self, path: str) -> str:
+        package_dir = Path(self.config.package_dir).resolve()
+        base_dir = Path(self.config.base_dir).resolve()
+        candidate = Path(path)
+
+        if not candidate.is_absolute():
+            if candidate.parts and candidate.parts[0] == package_dir.name:
+                candidate = base_dir / candidate
+            else:
+                candidate = package_dir / candidate
+
+        resolved = candidate.resolve()
+        try:
+            resolved.relative_to(package_dir)
+        except ValueError as exc:
+            raise ValueError(
+                f"recording_path must point to a .chlsj file inside {package_dir}"
+            ) from exc
+
+        if resolved.suffix.lower() != ".chlsj":
+            raise ValueError("recording_path must end with `.chlsj`")
+
+        return str(resolved)
 
     async def load_latest_with_path(self) -> tuple[str, list[dict]]:
         latest_path = self._latest_recording_path()
@@ -135,17 +160,19 @@ class RecordingHistoryService:
 
     async def get_snapshot(self, path: Optional[str] = None) -> list[dict]:
         if path:
-            with open(path, "r", encoding="utf-8") as handle:
+            resolved_path = self._resolve_recording_path(path)
+            with open(resolved_path, "r", encoding="utf-8") as handle:
                 return json.load(handle)
         return await self.load_latest()
 
     async def get_snapshot_result(self, path: Optional[str] = None) -> RecordingSnapshotResult:
         if path:
-            with open(path, "r", encoding="utf-8") as handle:
+            resolved_path = self._resolve_recording_path(path)
+            with open(resolved_path, "r", encoding="utf-8") as handle:
                 items = json.load(handle)
             return RecordingSnapshotResult(
                 source="history",
-                path=path,
+                path=resolved_path,
                 items=items,
                 total_items=len(items),
             )
