@@ -39,14 +39,13 @@ class TrafficQueryOrchestrator:
         query: TrafficQuery,
         cursor: int | None = None,
     ) -> TrafficQueryResult:
-        limit = max(query.max_items * 5, query.max_items, 50)
         prepared = await self.prepare_capture(
             source="live",
             query=query,
             capture_id=capture_id,
             cursor=cursor,
             advance=False,
-            read_limit=limit,
+            read_limit=query.scan_limit,
         )
         return self.build_query_result(prepared=prepared, query=query, include_items=True)
 
@@ -102,6 +101,8 @@ class TrafficQueryOrchestrator:
                 query=query,
                 capture_id=capture_id,
                 next_cursor=live_result.next_cursor,
+                total_items=live_result.total_new_items,
+                already_truncated=live_result.truncated,
                 initial_warnings=list(live_result.warnings),
             )
 
@@ -331,12 +332,14 @@ class TrafficQueryOrchestrator:
         capture_id: str | None = None,
         recording_path: str | None = None,
         next_cursor: int | None = None,
+        total_items: int | None = None,
+        already_truncated: bool = False,
         initial_warnings: list[str] | None = None,
     ) -> PreparedTrafficEntries:
         warnings = list(initial_warnings or [])
-        total_items = len(raw_entries)
+        total_items = total_items if total_items is not None else len(raw_entries)
         scanned_entries = raw_entries[: query.scan_limit]
-        truncated = total_items > query.scan_limit
+        truncated = already_truncated or total_items > query.scan_limit
         if truncated:
             warnings.append("scan_limit_reached")
 

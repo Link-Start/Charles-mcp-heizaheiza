@@ -54,15 +54,18 @@ def _api_entry(path: str = "/api/login") -> dict:
     }
 
 
-def _image_entry() -> dict:
+def _image_entry(
+    path: str = "/assets/logo.png",
+    start: str = "2026-03-06T10:00:01.000+08:00",
+) -> dict:
     return {
         "status": "COMPLETE",
         "method": "GET",
         "scheme": "https",
         "host": "static.example.com",
-        "path": "/assets/logo.png",
+        "path": path,
         "query": None,
-        "times": {"start": "2026-03-06T10:00:01.000+08:00"},
+        "times": {"start": start},
         "durations": {"total": 8},
         "totalSize": 24576,
         "request": {
@@ -70,7 +73,7 @@ def _image_entry() -> dict:
             "charset": None,
             "contentEncoding": None,
             "sizes": {"body": 0},
-            "header": {"firstLine": "GET /assets/logo.png HTTP/1.1", "headers": []},
+            "header": {"firstLine": f"GET {path} HTTP/1.1", "headers": []},
         },
         "response": {
             "status": 200,
@@ -312,6 +315,49 @@ async def test_query_live_capture_entries_returns_full_summary(
     )
 
     assert result["items"][0]["request_header_highlights"]["authorization"] == "Bearer live-secret"
+
+
+@pytest.mark.asyncio
+async def test_query_live_capture_entries_honors_live_scan_limit_window(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake_client = _fake_client_class()
+    fake_client.current_export = [_api_entry("/api/bootstrap")]
+    monkeypatch.setattr(server_module, "CharlesClient", fake_client)
+
+    server = create_server()
+    started = _tool_result(
+        await server.call_tool(
+            "start_live_capture",
+            {"adopt_existing": True, "include_existing": False},
+        )
+    )
+
+    noisy_entries = [
+        _image_entry(
+            path=f"/assets/{index}.png",
+            start=f"2026-03-06T10:01:{index:02d}.000+08:00",
+        )
+        for index in range(60)
+    ]
+    fake_client.current_export = [_api_entry("/api/bootstrap"), *noisy_entries, _api_entry("/api/tail")]
+
+    result = _tool_result(
+        await server.call_tool(
+            "query_live_capture_entries",
+            {
+                "capture_id": started["capture_id"],
+                "cursor": 0,
+                "scan_limit": 500,
+                "max_items": 10,
+            },
+        )
+    )
+
+    assert result["total_items"] == 61
+    assert result["scanned_count"] == 61
+    assert result["matched_count"] == 1
+    assert result["items"][0]["path"] == "/api/tail"
 
 
 @pytest.mark.asyncio
