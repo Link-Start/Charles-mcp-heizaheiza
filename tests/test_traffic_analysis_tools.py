@@ -143,6 +143,45 @@ def _multipart_entry() -> dict:
     }
 
 
+def _long_text_entry(*, path: str = "/api/search", marker: str = "secret-token") -> dict:
+    request_body = ("A" * 200) + marker
+    response_body = ("B" * 200) + marker
+    return {
+        "status": "COMPLETE",
+        "method": "POST",
+        "scheme": "https",
+        "host": "api.example.com",
+        "path": path,
+        "query": None,
+        "times": {"start": "2026-03-06T10:00:04.000+08:00"},
+        "durations": {"total": 22},
+        "totalSize": len(request_body) + len(response_body),
+        "request": {
+            "mimeType": "text/plain",
+            "charset": "utf-8",
+            "contentEncoding": None,
+            "sizes": {"body": len(request_body)},
+            "header": {
+                "firstLine": f"POST {path} HTTP/1.1",
+                "headers": [{"name": "Content-Type", "value": "text/plain"}],
+            },
+            "body": {"text": request_body},
+        },
+        "response": {
+            "status": 200,
+            "mimeType": "text/plain",
+            "charset": "utf-8",
+            "contentEncoding": None,
+            "sizes": {"body": len(response_body)},
+            "header": {
+                "firstLine": "HTTP/1.1 200 OK",
+                "headers": [{"name": "Content-Type", "value": "text/plain"}],
+            },
+            "body": {"text": response_body},
+        },
+    }
+
+
 def _fake_client_class() -> type:
     class FakeClient:
         current_export: list[dict] = []
@@ -358,6 +397,31 @@ async def test_query_live_capture_entries_honors_live_scan_limit_window(
     assert result["scanned_count"] == 61
     assert result["matched_count"] == 1
     assert result["items"][0]["path"] == "/api/tail"
+
+
+@pytest.mark.asyncio
+async def test_analyze_recorded_traffic_matches_body_text_beyond_preview_window(
+    tmp_path: Path,
+) -> None:
+    config = Config(base_dir=str(tmp_path))
+    recording_path = tmp_path / "package" / "body-filter.chlsj"
+    recording_path.parent.mkdir(parents=True, exist_ok=True)
+    recording_path.write_text(json.dumps([_long_text_entry()]), encoding="utf-8")
+
+    server = create_server(config)
+    result = _tool_result(
+        await server.call_tool(
+            "analyze_recorded_traffic",
+            {
+                "recording_path": str(recording_path),
+                "request_body_contains": "secret-token",
+                "max_preview_chars": 64,
+            },
+        )
+    )
+
+    assert result["matched_count"] == 1
+    assert result["items"][0]["path"] == "/api/search"
 
 
 @pytest.mark.asyncio

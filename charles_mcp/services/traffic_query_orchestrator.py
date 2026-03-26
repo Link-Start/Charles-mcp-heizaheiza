@@ -347,6 +347,9 @@ class TrafficQueryOrchestrator:
         effective_query = query
         if query.preset == "errors_only" and query.has_error is None:
             effective_query = query.model_copy(update={"has_error": True})
+        needs_body_search = bool(
+            effective_query.request_body_contains or effective_query.response_body_contains
+        )
 
         filtered_out_by_class: Counter[str] = Counter()
         classified_counts: Counter[str] = Counter()
@@ -368,15 +371,17 @@ class TrafficQueryOrchestrator:
                 capture_source=source,
                 capture_id=capture_id,
                 recording_path=recording_path,
-                include_full_body=False,
+                include_full_body=needs_body_search,
                 max_preview_chars=effective_query.max_preview_chars,
                 max_headers_per_side=effective_query.max_headers_per_side,
+                max_full_body_chars=self._body_match_chars(raw) if needs_body_search else 4096,
                 classification=classification,
             )
-            detail_entries[entry.entry_id] = entry
             match = self.analysis_service.match_entry(entry, effective_query)
+            compact_entry = self._compact_entry_for_cache(entry) if needs_body_search else entry
+            detail_entries[compact_entry.entry_id] = compact_entry
             if match.matched:
-                matched_entries.append((entry, match))
+                matched_entries.append((compact_entry, match))
 
         identity = capture_id if source == "live" else recording_path
         if identity:
@@ -407,6 +412,36 @@ class TrafficQueryOrchestrator:
         if not include_full_body:
             return SUMMARY_BODY_MODE
         return f"full:{max_body_chars}"
+
+    @staticmethod
+    def _body_match_chars(raw_entry: dict) -> int:
+        lengths = []
+        for side in ("request", "response"):
+            message = raw_entry.get(side) or {}
+            body = message.get("body") or {}
+            text = body.get("text")
+            if text not in (None, ""):
+                lengths.append(len(str(text)))
+        return max(lengths, default=4096)
+
+    @staticmethod
+    def _compact_entry_for_cache(entry: TrafficEntry) -> TrafficEntry:
+        updates: dict[str, object] = {}
+        for side in ("request", "response"):
+            message = getattr(entry, side)
+            body = message.body
+            if body.full_text is None and not body.full_text_truncated:
+                continue
+            updates[side] = message.model_copy(
+                update={
+                    "body": body.model_copy(
+                        update={"full_text": None, "full_text_truncated": False}
+                    )
+                }
+            )
+        if updates:
+            return entry.model_copy(update=updates)
+        return entry
 
     @staticmethod
     def _excluded_by_preset(resource_class: str, query: TrafficQuery) -> bool:

@@ -100,22 +100,22 @@ class TrafficAnalysisService:
             match_reasons.append("response content-type matched")
 
         if query.request_body_contains and not self._contains_text(
-            entry.request.body.preview_text,
+            self._body_text(entry.request),
             query.request_body_contains,
         ):
             return TrafficMatch(matched=False)
         if query.request_body_contains:
             matched_fields.append("request.body")
-            match_reasons.append("request body preview matched")
+            match_reasons.append("request body matched")
 
         if query.response_body_contains and not self._contains_text(
-            entry.response.body.preview_text,
+            self._body_text(entry.response),
             query.response_body_contains,
         ):
             return TrafficMatch(matched=False)
         if query.response_body_contains:
             matched_fields.append("response.body")
-            match_reasons.append("response body preview matched")
+            match_reasons.append("response body matched")
 
         if query.request_json_query and not self._match_json_query(
             entry.request.body.parsed_json,
@@ -269,6 +269,10 @@ class TrafficAnalysisService:
     @staticmethod
     def _contains_text(value: str | None, needle: str) -> bool:
         return needle.lower() in (value or "").lower()
+
+    @staticmethod
+    def _body_text(message: HttpMessage) -> str | None:
+        return message.body.full_text or message.body.preview_text
 
     @staticmethod
     def _match_json_query(payload: object, expression: str) -> bool:
