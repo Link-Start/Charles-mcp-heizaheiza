@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "charles-mcp"
-version = "2.0.0.post1"
+version = "2.0.1"
 description = "Charles Proxy MCP server with live capture, structured traffic analysis, and agent-friendly tool contracts"
 readme = {file = "README.en.md", content-type = "text/markdown"}
 license = "MIT"

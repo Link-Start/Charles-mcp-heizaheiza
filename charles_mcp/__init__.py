@@ -11,7 +11,7 @@ Example:
     >>> server.run(transport="stdio")
 """
 
-__version__ = "2.0.0.post1"
+__version__ = "2.0.1"
 __author__ = "heizaheiza"
 
 from charles_mcp.config import Config
