@@ -2,10 +2,12 @@
 
 import os
 import sys
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
+import charles_mcp.config as config_module
 from charles_mcp.config import Config, get_config, reset_config
 
 
@@ -40,6 +42,28 @@ class TestConfig:
             assert config.charles_user == "testuser"
             assert config.charles_pass == "testpass"
             assert config.proxy_port == 9999
+
+    def test_explicit_base_dir_keeps_runtime_artifacts_under_base_dir(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        config = Config(base_dir=str(tmp_path))
+
+        assert config.package_dir == str(tmp_path / "package")
+        assert config.backup_dir == str(tmp_path / "back")
+
+    def test_default_install_layout_uses_user_state_dir(self, tmp_path: Path) -> None:
+        install_root = tmp_path / "site-packages" / "charles-mcp"
+        install_root.mkdir(parents=True, exist_ok=True)
+        state_root = tmp_path / "state-root"
+
+        with patch.object(config_module, "_default_base_dir", return_value=str(install_root)):
+            with patch.object(config_module, "_default_state_dir", return_value=str(state_root)):
+                config = Config(base_dir=str(install_root))
+
+        assert config.base_dir == str(install_root)
+        assert config.package_dir == str(state_root / "package")
+        assert config.backup_dir == str(state_root / "back")
 
     def test_proxy_url(self) -> None:
         config = Config()

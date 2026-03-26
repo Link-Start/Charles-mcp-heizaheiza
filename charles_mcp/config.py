@@ -13,6 +13,36 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 
+def _default_base_dir() -> str:
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _looks_like_repo_root(path: str) -> bool:
+    root = Path(path)
+    return (root / "pyproject.toml").exists() and (root / "charles_mcp").is_dir()
+
+
+def _default_state_dir() -> str:
+    env_state_dir = os.getenv("CHARLES_STATE_DIR")
+    if env_state_dir:
+        return env_state_dir
+
+    user_home = Path.home()
+    if sys.platform == "win32":
+        local_app_data = os.getenv("LOCALAPPDATA")
+        if local_app_data:
+            return os.path.join(local_app_data, "charles-mcp")
+        return str(user_home / "AppData" / "Local" / "charles-mcp")
+
+    if sys.platform == "darwin":
+        return str(user_home / "Library" / "Application Support" / "charles-mcp")
+
+    xdg_state_home = os.getenv("XDG_STATE_HOME")
+    if xdg_state_home:
+        return os.path.join(xdg_state_home, "charles-mcp")
+    return str(user_home / ".local" / "state" / "charles-mcp")
+
+
 def _env_bool(name: str, default: bool = False) -> bool:
     """Parse a boolean environment variable with a conservative default."""
     value = os.getenv(name)
@@ -35,9 +65,7 @@ class Config:
 
     config_path: Optional[str] = None
     profiles_dir: Optional[str] = None
-    base_dir: str = field(
-        default_factory=lambda: os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    )
+    base_dir: str = field(default_factory=_default_base_dir)
     package_dir: str = ""
     backup_dir: str = ""
 
@@ -52,8 +80,26 @@ class Config:
     )
 
     def __post_init__(self) -> None:
-        self.package_dir = os.path.join(self.base_dir, "package")
-        self.backup_dir = os.path.join(self.base_dir, "back")
+        source_root = Path(_default_base_dir()).resolve()
+        configured_base_dir = Path(self.base_dir).resolve()
+        explicit_base_dir = configured_base_dir != source_root
+        prefer_base_dir = explicit_base_dir or _looks_like_repo_root(str(configured_base_dir))
+        state_dir = Path(_default_state_dir())
+
+        env_package_dir = os.getenv("CHARLES_PACKAGE_DIR")
+        env_backup_dir = os.getenv("CHARLES_BACKUP_DIR")
+
+        if env_package_dir:
+            self.package_dir = env_package_dir
+        elif not self.package_dir:
+            target_root = configured_base_dir if prefer_base_dir else state_dir
+            self.package_dir = str(target_root / "package")
+
+        if env_backup_dir:
+            self.backup_dir = env_backup_dir
+        elif not self.backup_dir:
+            target_root = configured_base_dir if prefer_base_dir else state_dir
+            self.backup_dir = str(target_root / "back")
 
         env_config_path = os.getenv("CHARLES_CONFIG_PATH")
         if env_config_path and os.path.exists(env_config_path):
