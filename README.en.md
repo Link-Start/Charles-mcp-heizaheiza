@@ -332,6 +332,16 @@ If this project helps your work, you can support future maintenance and iteratio
 
 `TCudxn9ByCxPZHXLtvqBjFmLWXywBoicRs`
 
+## Changelog
+
+### 2026-03-27 (v2.0.1)
+
+- Restricted history snapshot access to managed `.chlsj` files so the server no longer exposes arbitrary local JSON reads through recording-path inputs.
+- Fixed live analysis so `scan_limit` is actually honored instead of silently stopping at a small fixed scan window.
+- Fixed `request_body_contains` and `response_body_contains` so matching is no longer limited to clipped preview text.
+- Moved installed-runtime snapshots and backups to a user state directory instead of writing runtime data into the package install tree.
+- Published `2.0.1` with the fixes above and synced the release across GitHub and PyPI.
+
 ## See Also
 
 - [Chinese README](README.md)

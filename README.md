@@ -336,6 +336,14 @@ python -c "from charles_mcp.main import main; main()"
 
 ## 更新日志
 
+### 2026-03-27 (v2.0.1)
+
+- **限制历史录包路径读取**：历史快照相关入口现在只允许访问受管目录中的 `.chlsj` 文件，避免通过工具接口读取任意本地 JSON 文件
+- **修复 live 扫描窗口**：`query_live_capture_entries` 与相关 live 分析路径现在真正遵循 `scan_limit`，不再静默只扫描一个很小的固定窗口
+- **修复 body 过滤漏报**：`request_body_contains` 与 `response_body_contains` 不再只匹配截断后的 preview 文本，能正确覆盖更完整的请求与响应体
+- **调整运行时数据目录**：安装环境默认改用用户状态目录保存快照与备份，避免把运行时数据写进包安装目录
+- **发布 `2.0.1`**：同步了以上修复，并已更新 GitHub 与 PyPI 版本
+
 ### 2026-03-13 (v2)
 
 - **修复 `lower_name` 校验崩溃**：`HeaderKV.lower_name` 添加默认值与自动计算 validator，解决 `get_traffic_entry_detail` 输出校验报错 `'lower_name' is a required property` 导致工具完全不可用的问题
