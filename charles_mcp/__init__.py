@@ -12,7 +12,7 @@ Example:
 """
 
 __version__ = "2.0.0"
-__author__ = "7owe2"
+__author__ = "heizaheiza"
 
 from charles_mcp.config import Config
 from charles_mcp.client import CharlesClient
