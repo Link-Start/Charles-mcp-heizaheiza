@@ -44,9 +44,9 @@ charles-mcp = "charles_mcp.main:main"
 
 [project.urls]
 Homepage = "https://github.com/heizaheiza/Charles-mcp"
-Documentation = "https://github.com/7owe2/Charles-mcp/blob/main/README.en.md"
+Documentation = "https://github.com/heizaheiza/Charles-mcp/blob/main/README.en.md"
 Repository = "https://github.com/heizaheiza/Charles-mcp"
-Issues = "https://github.com/7owe2/Charles-mcp/issues"
+Issues = "https://github.com/heizaheiza/Charles-mcp/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
